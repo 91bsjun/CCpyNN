@@ -2,3 +2,5 @@ CCpyNN/Data/metal-alloy-db.v1
 CCpyNN/Data/metal-alloy-db.v1/*
 CCpyNN/__pycache__/
 CCpyNN/__pycache__/*
+.idea
+.idea/*
