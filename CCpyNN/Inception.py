@@ -106,6 +106,17 @@ def stem(input_layer):
 
     return L3
 
+def dream1(input_layer):
+    conv_layer_1= tf.layers.conv3d(inputs=input_layer, filters=32,
+                                   kernel_size=[2, 2, 3],
+                                   padding="same",
+                                   strides=[2, 2, 5],
+                                   activation=tf.nn.relu)
+    conv_layer_1 = tf.layers.conv3d(inputs=input_layer, filters=32,
+                                    kernel_size=[2, 2, 3],
+                                    padding="same",
+                                    strides=[2, 2, 5],
+                                    activation=tf.nn.relu)
 
 def inception_A(input_layer):
     # ---- Inception 0 : 1x1

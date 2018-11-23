@@ -1,16 +1,15 @@
 import os
-import json
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
-from pymatgen.core.periodic_table import Element
 from pymatgen.core.structure import IStructure
 
 from CCpyNN.StructureEncoder import structure_encoder
 np.set_printoptions(threshold=np.nan)
 pd.set_option('display.max_rows', None)
+
 
 def get_batch_data(X, Y, batch_size):
     total_data = len(X)
@@ -22,13 +21,14 @@ def get_batch_data(X, Y, batch_size):
     else:
         batch_group = int(total_data / batch_size)
         for b in range(batch_group):
-            batch_x.append(X[b*batch_size:(b+1)*batch_size])
-            batch_y.append(Y[b*batch_size:(b+1)*batch_size])
+            batch_x.append(X[b * batch_size:(b + 1) * batch_size])
+            batch_y.append(Y[b * batch_size:(b + 1) * batch_size])
         if (b+1) * batch_size != total_data:
-            batch_x.append(X[(b+1)*batch_size:])
-            batch_y.append(Y[(b+1)*batch_size:])
+            batch_x.append(X[(b + 1) * batch_size:])
+            batch_y.append(Y[(b + 1) * batch_size:])
 
     return batch_x, batch_y
+
 
 if __name__ == "__main__":
     radius = 3
@@ -37,26 +37,13 @@ if __name__ == "__main__":
     test = 0.1
 
     df = pd.read_csv("./Data/metal-alloy-db.v1/00Total_DB.csv")
-    #df = df.sample(n=len(df))
-    df = df.sample(n=1000)
+    # df = df.sample(n=len(df))
+    df = df.sample(n=500)
 
     cifs = "./Data/metal-alloy-db.v1/" + df['DBname'] + ".cif"
     structures = [IStructure.from_file(cif) for cif in cifs]
 
-    print("Encoding structures")
-    import pickle
-    if "encoded_structure.pkl" in os.listdir("./"):
-        print("using pickle")
-        with open("encoded_structure.pkl", "rb") as mydata:
-            encoded_structures = pickle.load(mydata)
-    else:
-        encoded_structures = [structure_encoder(structure, radius, max_neighbor_num) for structure in structures]
-        with open("encoded_structure.pkl", "wb") as savedata:
-            pickle.dump(encoded_structures, savedata)
-
-    print("Done")
-
-    #encoded_structures = [structure_encoder(structure, radius, max_neighbor_num) for structure in structures]
+    encoded_structures = [structure_encoder(structure, radius, max_neighbor_num) for structure in structures]
     x_data = np.array(encoded_structures)
     x_data = np.expand_dims(x_data, axis=4)
 
@@ -66,6 +53,7 @@ if __name__ == "__main__":
         mean = formation_energy.mean()
         std = formation_energy.std()
         norm_form_energy = (df['FormationEnergy'] - mean) / std
+
         def norm_back(val, mean, std):
             return val * std + mean
         y_data = [[val] for val in norm_form_energy]
@@ -82,24 +70,22 @@ if __name__ == "__main__":
     y_test = y_data[train:train+test]
 
     X = tf.placeholder(tf.float32, [None, 8, 10, 225, 1])  # (?, N, 10, 104)
-    X1 = slim.fully_connected(X, 128)
-    X2 = tf.contrib.layers.batch_norm(X1)
     Y = tf.placeholder(tf.float32, [None, 1])  # (?, )
 
     conv_layer_1= tf.layers.conv3d(inputs=X, filters=32,
-                                  kernel_size=[2, 2, 5],
-                                  padding="valid",
-                                  strides=[2, 2, 5],
-                                  activation=tf.nn.relu)
+                                   kernel_size=[2, 2, 5],
+                                   padding="valid",
+                                   strides=[2, 2, 5],
+                                   activation=tf.nn.relu)
     print("conv1", conv_layer_1.shape)
 
-    conv_layer_2 = tf.layers.conv3d(inputs=conv_layer_1, filters=64,
-                                    kernel_size=[5, 5, 5],
+    conv_layer_2 = tf.layers.conv3d(inputs=conv_layer_1, filters=32,
+                                    kernel_size=[3, 3, 5],
                                     padding="same",
                                     activation=tf.nn.relu)
     print("conv2", conv_layer_2.shape)
 
-    conv_layer_3= tf.layers.conv3d(inputs=conv_layer_2, filters=128,
+    conv_layer_3= tf.layers.conv3d(inputs=conv_layer_2, filters=64,
                                    kernel_size=[1, 1, 5],
                                    padding="valid",
                                    strides=[1, 1, 5],
@@ -134,19 +120,19 @@ if __name__ == "__main__":
 
     dropout_layer = tf.nn.dropout(dense_layer, keep_prob=0.8)
 
-    logit_layer = tf.layers.dense(dropout_layer, units=1)
+    b = tf.Variable(tf.random_normal([1]), name='bias')
+    logit_layer = tf.layers.dense(dropout_layer, units=1) + b
     print("logit layer", logit_layer.shape)
 
-
     cost = tf.losses.mean_squared_error(Y, logit_layer)
-    #cost = tf.reduce_mean(tf.square(logit_layer - Y))
-    #cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=hypothesis, labels=Y))
+    # cost = tf.reduce_mean(tf.square(logit_layer - Y))
+    # cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=hypothesis, labels=Y))
 
     optimizer = tf.train.AdamOptimizer(learning_rate=0.01).minimize(cost)
 
     # parameters
     epoch_size = 50
-    batch_size = 100
+    batch_size = 128
 
     with tf.Session() as sess:
         # -- Initialize
