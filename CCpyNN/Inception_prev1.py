@@ -143,13 +143,10 @@ def deception(input_layer):
                                padding="valid",
                                strides=[1, 1, 4])
 
-    post_conv = tf.reduce_mean(layer_5, axis=1)
-    post_conv = tf.reshape(post_conv, [-1, 5, 256])
+    post_conv = tf.reshape(layer_5, [-1, 4, 5, 256])
 
-    # post_conv = tf.reshape(layer_5, [-1, 4, 5, 256])
-
-    # pooling_layer = tf.layers.max_pooling2d(inputs=post_conv, pool_size=[2, 2], strides=2)
-    pooling_layer = tf.layers.max_pooling1d(inputs=post_conv, pool_size=2, strides=2)
+    pooling_layer = tf.layers.max_pooling2d(inputs=post_conv, pool_size=[2, 2], strides=2)
+    # pooling_layer = tf.layers.max_pooling1d(inputs=post_conv, pool_size=2, strides=2)
 
     return pooling_layer
 
@@ -162,6 +159,7 @@ def stem(input_layer):
                                activation=tf.nn.relu)
 
     return layer_A
+
 
 class EarlyStopping():
     def __init__(self, patience=0, verbose=0):
@@ -182,6 +180,7 @@ class EarlyStopping():
             self._loss = loss
 
         return False
+
 def plot_result(loss, prd, cal):
     min_val = min(prd.min(), cal.min())
     max_val = max(prd.max(), cal.max())
@@ -206,10 +205,10 @@ def plot_result(loss, prd, cal):
     return plt
 
 if __name__ == "__main__":
-    x_train, y_train, x_test, y_test = get_data(normalize_y=False, sample_size=4000)
+    x_train, y_train, x_test, y_test = get_data(normalize_y=False, sample_size=2000)
 
-    # X = tf.placeholder(tf.float32, [None, 8, 10, 225])  # (?, N, 10, 225)
-    X = tf.placeholder(tf.float32, [None, None, 10, 225])  # (?, N, 10, 225)
+    X = tf.placeholder(tf.float32, [None, 8, 10, 225])  # (?, N, 10, 225)
+    # X = tf.placeholder(tf.float32, [None, None, 10, 225])  # (?, N, 10, 225)
     Y = tf.placeholder(tf.float32, [None, 1])  # (?, 1)
 
     fcX = tf.layers.dense(X, units=128)
@@ -220,8 +219,8 @@ if __name__ == "__main__":
 
     deception_layer_1 = deception(expX)
 
-    #flat_layer = tf.reshape(deception_layer_1, [-1, 2 * 2 * 256])
-    flat_layer = tf.layers.flatten(deception_layer_1)
+    flat_layer = tf.reshape(deception_layer_1, [-1, 2 * 2 * 256])
+    # flat_layer = tf.layers.flatten(deception_layer_1)
 
     dense_layer = tf.layers.dense(inputs=flat_layer, units=1024)
 
@@ -233,7 +232,7 @@ if __name__ == "__main__":
     optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(cost)
 
     # parameters
-    epoch_size = 50
+    epoch_size = 30
     batch_size = 100
     train_loss = []
 
@@ -251,7 +250,9 @@ if __name__ == "__main__":
                 c, hy, _ = sess.run([cost, logit_layer, optimizer], feed_dict={X: batch_x[i], Y: batch_y[i]})
                 avg_cost += c
             avg_cost = avg_cost / len(batch_x)
+            train_loss.append(avg_cost)
             print('Epoch:', '%04d' % (epoch + 1), 'cost =', '{:.9f}'.format(avg_cost))
+
             if early_stopping.validate(avg_cost):
                 break
         # -- Eval
