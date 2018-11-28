@@ -20,11 +20,11 @@ def get_data(normalize_y, sample_size):
     training = 0.9
     test = 0.1
 
-    df = pd.read_csv("./Data/metal-alloy-db.v2/00Total_DB.csv")
+    df = pd.read_csv("./Data/metal-alloy-db.v1/00Total_DB.csv")
     # df = df.sample(n=len(df))
     df = df.sample(n=sample_size)
 
-    cifs = "./Data/metal-alloy-db.v2/" + df['DBname'] + ".cif"
+    cifs = "./Data/metal-alloy-db.v1/" + df['DBname'] + ".cif"
     structures = [IStructure.from_file(cif) for cif in cifs]
     encoded_structures = [structure_encoder(structure, radius, max_neighbor_num) for structure in structures]
     x_data = np.array(encoded_structures)
@@ -53,7 +53,6 @@ def get_data(normalize_y, sample_size):
 
     return x_train, y_train, x_test, y_test
 
-
 def get_batch_data(X, Y, batch_size):
     total_data = len(X)
     batch_x = []
@@ -71,7 +70,6 @@ def get_batch_data(X, Y, batch_size):
             batch_y.append(Y[(b + 1) * batch_size:])
 
     return batch_x, batch_y
-
 
 def inception1(input_layer):
     # Layer A : 1x1x1
@@ -123,57 +121,46 @@ def inception1(input_layer):
 
 
 def deception(input_layer):
-    layer_1 = tf.layers.conv3d(inputs=input_layer, filters=32,
+    # 8, 10, 128
+    layer_1 = tf.layers.conv3d(inputs=input_layer, filters=16,
                                kernel_size=[2, 2, 4],
                                padding="valid",
                                strides=[2, 2, 4])
-
     layer_2 = tf.layers.conv3d(inputs=layer_1, filters=32,
-                               kernel_size=[3, 3, 5],
+                               kernel_size=[3, 3, 7],
                                padding="same",
                                strides=[1, 1, 1])
-
     layer_3 = tf.layers.conv3d(inputs=layer_2, filters=64,
                                kernel_size=[2, 1, 4],
                                padding="valid",
                                strides=[1, 1, 4])
-
     layer_4 = tf.layers.conv3d(inputs=layer_3, filters=128,
                                kernel_size=[2, 1, 1],
                                padding="valid",
                                strides=[1, 1, 4])
-
-    layer_5 = tf.layers.conv3d(inputs=layer_4, filters=128,
+    layer_5 = tf.layers.conv3d(inputs=layer_4, filters=256,
                                kernel_size=[1, 1, 1],
                                padding="valid",
                                strides=[1, 1, 4])
 
-    post_conv = tf.reduce_mean(layer_5, axis=1)
-    s = post_conv.shape
-    post_conv = tf.reshape(post_conv, [-1, s[1], s[3]])
+    #post_conv = tf.reshape(layer_5, [-1, 4, 5, 256])
+    post_conv = tf.reshape(layer_5, [-1, 2, 5, 256])
 
-    pooling_layer = tf.layers.max_pooling1d(inputs=post_conv, pool_size=2, strides=1)
+    # pooling_layer = tf.layers.max_pooling2d(inputs=post_conv, pool_size=[2, 2], strides=2)
+    pooling_layer = tf.layers.max_pooling2d(inputs=post_conv, pool_size=[2, 2], strides=1)
 
     return pooling_layer
 
 
-
 def stem(input_layer):
-    '''
-    fcX = tf.layers.dense(input_layer, units=128)
-    bnX = tf.layers.batch_normalization(fcX)
-    expX = tf.expand_dims(bnX, axis=4)
-    '''
-    bnX = tf.layers.batch_normalization(input_layer)
-    fcX = tf.layers.dense(bnX, units=128)
-    expX = tf.expand_dims(fcX, axis=4)
-    layer_1 = tf.layers.conv3d(inputs=expX, filters=32,
+    # Layer A : 1x1x1
+    layer_A = tf.layers.conv3d(inputs=input_layer, filters=32,
                                kernel_size=[1, 1, 1],
                                padding="same",
-                               strides=[1, 1, 1])
+                               strides=[1, 1, 1],
+                               activation=tf.nn.relu)
 
-
-    return layer_1
+    return layer_A
 
 
 class EarlyStopping():
@@ -196,13 +183,12 @@ class EarlyStopping():
 
         return False
 
-
 def plot_result(loss, prd, cal):
     min_val = min(prd.min(), cal.min())
     max_val = max(prd.max(), cal.max())
 
     import matplotlib.pyplot as plt
-    plt.figure(figsize=(10, 4))
+    fig = plt.figure(figsize=(10, 4))
     # plot train loss
     plt.subplot(1, 2, 1)
     plt.plot([x + 1 for x in range(len(loss))], loss)
@@ -220,29 +206,22 @@ def plot_result(loss, prd, cal):
 
     return plt
 
-
 if __name__ == "__main__":
-    # parameters
-    sample_size = 9000
-    epoch_size = 50
-    batch_size = 150
-    train_loss = []
-
-    # X = tf.placeholder(tf.float32, [None, 8, 10, 225])  # (?, N, 10, 225)
-    X = tf.placeholder(tf.float32, [None, None, 10, 225])  # (?, N, 10, 225)
+    X = tf.placeholder(tf.float32, [None, 8, 10, 225])  # (?, N, 10, 225)
+    # X = tf.placeholder(tf.float32, [None, None, 10, 225])  # (?, N, 10, 225)
     Y = tf.placeholder(tf.float32, [None, 1])  # (?, 1)
     keep_prob = tf.placeholder(tf.float32)
+    is_train = tf.placeholder(tf.bool)
 
-    # ------- Stem -------- #
-    stem_layer = stem(X)
+    fcX = tf.layers.dense(X, units=128)
+    bnX = tf.layers.batch_normalization(fcX)
+    expX = tf.expand_dims(bnX, axis=4)
 
-    # ----- Inception ----- #
-    # inception_layer_1 = inception1(stem_layer)
+    # inception_layer_1 = inception1(expX)
 
-    # ----- Deception ----- #
-    deception_layer_1 = deception(stem_layer)
+    deception_layer_1 = deception(expX)
 
-    #flat_layer = tf.reshape(deception_layer_1, [-1, 2 * 2 * 256])
+    # flat_layer = tf.reshape(deception_layer_1, [-1, 2 * 2 * 256])
     flat_layer = tf.layers.flatten(deception_layer_1)
 
     dense_layer = tf.layers.dense(inputs=flat_layer, units=1024)
@@ -252,9 +231,14 @@ if __name__ == "__main__":
     logit_layer = tf.layers.dense(dropout_layer, units=1)
 
     cost = tf.losses.mean_squared_error(Y, logit_layer)
+
     optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(cost)
 
-
+    # parameters
+    sample_size = 500
+    epoch_size = 50
+    batch_size = 150
+    train_loss = []
 
     with tf.Session() as sess:
         # -- Early stop code
@@ -274,9 +258,9 @@ if __name__ == "__main__":
             avg_cost = avg_cost / len(batch_x)
             train_loss.append(avg_cost)
             print('Epoch:', '%04d' % (epoch + 1), 'cost =', '{:.9f}'.format(avg_cost))
+
             if early_stopping.validate(avg_cost):
                 break
-
         # -- Eval
         c, hy, _ = sess.run([cost, logit_layer, optimizer], feed_dict={X: x_test, Y: y_test, keep_prob: 1})
         print("Evaluated MSE : %.9f" % c)

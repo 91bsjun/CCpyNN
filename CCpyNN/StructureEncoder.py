@@ -141,15 +141,15 @@ def structure_encoder(structure, radius, max_neighbor_num):
     onehot_neighbor_distance = gaussian_distance(neighbor_distance)
 
     # -- custom atom_info
-    # atom_info = atomic_info()  # atomic information of all atoms as order of atomic number
+    atom_info = atomic_info()  # atomic information of all atoms as order of atomic number
 
     # -- atom_info load from CGCNN
-    jstring = open("./Data/atom_init.json", "r").read()
-    loaded_dict = json.loads(jstring)
-    atom_info = []
-    for key in loaded_dict.keys():
-        atom_info.append(loaded_dict[key])
-    atom_info = np.array(atom_info)
+    # jstring = open("./Data/atom_init.json", "r").read()
+    # loaded_dict = json.loads(jstring)
+    # atom_info = []
+    # for key in loaded_dict.keys():
+    #     atom_info.append(loaded_dict[key])
+    # atom_info = np.array(atom_info)
     # -- end
 
     all_sites_atom_info = [atom_info[num - 1] for num in all_sites_atom_num]
