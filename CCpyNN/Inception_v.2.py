@@ -130,16 +130,16 @@ def deception(input_layer):
                                strides=[2, 2])
 
     layer_2 = tf.layers.conv2d(inputs=layer_1, filters=64,
-                               kernel_size=[5, 5],
+                               kernel_size=[2, 2],
                                padding="same",
-                               strides=[1, 1])
+                               strides=[2, 2])
 
-    layer_3 = tf.layers.conv2d(inputs=layer_2, filters=128,
-                               kernel_size=[3, 3],
+    layer_3 = tf.layers.conv2d(inputs=layer_2, filters=64,
+                               kernel_size=[2, 2],
                                padding="valid",
-                               strides=[1, 1])
+                               strides=[2, 2])
 
-    layer_4 = tf.layers.conv2d(inputs=layer_3, filters=256,
+    layer_4 = tf.layers.conv2d(inputs=layer_3, filters=64,
                                kernel_size=[2, 2],
                                padding="valid",
                                strides=[2, 2])
@@ -223,7 +223,7 @@ def plot_result(loss, prd, cal):
 
 if __name__ == "__main__":
     # parameters
-    sample_size = 4000
+    sample_size = 1000
     epoch_size = 50
     batch_size = 150
     train_loss = []
