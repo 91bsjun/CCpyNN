@@ -5,7 +5,6 @@ np.set_printoptions(threshold=np.nan)
 from pymatgen.core.structure import IStructure
 
 
-
 class StructureToMatrixEncoder():
     def __init__(self, filename, grid_size=1):
         structure = IStructure.from_file(filename)

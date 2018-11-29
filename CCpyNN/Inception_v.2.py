@@ -130,29 +130,29 @@ def deception(input_layer):
                                strides=[2, 2])
 
     layer_2 = tf.layers.conv2d(inputs=layer_1, filters=64,
-                               kernel_size=[2, 2],
+                               kernel_size=[3, 3],
                                padding="same",
                                strides=[2, 2])
 
-    layer_3 = tf.layers.conv2d(inputs=layer_2, filters=64,
+    layer_3 = tf.layers.conv2d(inputs=layer_2, filters=128,
                                kernel_size=[2, 2],
                                padding="valid",
                                strides=[2, 2])
 
-    layer_4 = tf.layers.conv2d(inputs=layer_3, filters=64,
+    layer_4 = tf.layers.conv2d(inputs=layer_3, filters=128,
                                kernel_size=[2, 2],
                                padding="valid",
                                strides=[2, 2])
 
-    # layer_5 = tf.layers.conv2d(inputs=layer_4, filters=128,
-    #                            kernel_size=[2, 2],
-    #                            padding="valid",
-    #                            strides=[2, 2])
+    layer_5 = tf.layers.conv2d(inputs=layer_4, filters=128,
+                               kernel_size=[2, 2],
+                               padding="valid",
+                               strides=[2, 2])
 
     # post_conv = tf.reduce_mean(layer_5, axis=1)
     # s = post_conv.shape
 
-    pooling_layer = tf.layers.max_pooling2d(inputs=layer_4, pool_size=[2, 2], strides=2)
+    pooling_layer = tf.layers.max_pooling2d(inputs=layer_5, pool_size=[2, 2], strides=1)
 
     return pooling_layer
 
@@ -223,12 +223,12 @@ def plot_result(loss, prd, cal):
 
 if __name__ == "__main__":
     # parameters
-    sample_size = 1000
-    epoch_size = 50
+    sample_size = 4000
+    epoch_size = 75
     batch_size = 150
     train_loss = []
 
-    X = tf.placeholder(tf.float32, [None, 4, 4, 8, 92])
+    X = tf.placeholder(tf.float32, [None, None, None, None, 92])
     rsX = tf.reshape(X, [-1, 4 * 4 * 8, 92])
     Y = tf.placeholder(tf.float32, [None, 1])  # (?, 1)
     keep_prob = tf.placeholder(tf.float32)
@@ -283,8 +283,8 @@ if __name__ == "__main__":
         print("Evaluated MSE : %.9f" % c)
         prd = np.array(hy).squeeze()
         cal = np.array(mini_test_y).squeeze()
-        print(prd)
-        print(cal)
+        # print(prd)
+        # print(cal)
 
         plt = plot_result(train_loss, prd, cal)
         plt.show()
