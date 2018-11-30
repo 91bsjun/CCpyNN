@@ -3,6 +3,7 @@ import numpy as np
 np.set_printoptions(threshold=np.nan)
 
 from pymatgen.core.structure import IStructure
+from pymatgen.core.periodic_table import Element
 
 
 class StructureToMatrixEncoder():
@@ -20,8 +21,9 @@ class StructureToMatrixEncoder():
         self.grid_b = self.get_grid_length(b, self.grid_size)
         self.grid_c = self.get_grid_length(c, self.grid_size)
 
-        total_atom_info = get_cgcnn_atom_info()
-        empty_info = np.zeros(shape=total_atom_info[0].shape)
+        # total_atom_info = get_cgcnn_atom_info()
+        total_atom_info = atomic_info()
+        empty_info = np.full(total_atom_info[0].shape, -1)
         empty_info = np.array([empty_info])
         self.total_atom_info = np.concatenate((empty_info, total_atom_info), axis=0)
 
@@ -75,6 +77,67 @@ class StructureToMatrixEncoder():
         # structure_matrix = np.reshape(structure_matrix, [flat_len, atom_info_len])
         return structure_matrix
 
+
+def atomic_info():
+    """
+    Useful attributes: number, full_electroninc_structure, row, group, atomic_mass, atomic_radius,
+                       van_der_waals_radius, average_ionic_radius, X (electronegativity)
+    :param atoms:
+    :return:
+    """
+    # -- Parsing periodic_table.json@pymatgen
+    jstring = open("./Data/periodic_table.json", "r").read()
+    js = json.loads(jstring)
+    data = {}
+    keys = []
+    for key in js.keys():
+        atomic_no = js[key]['Atomic no']
+        keys.append(atomic_no)
+        data[js[key]['Atomic no']] = key
+    keys.sort()
+    atoms = [data[key] for key in keys]
+
+    # -- Electro negativity
+    elec_negativities = []
+    for atom in atoms:
+        if atom in ["He", "Ne", "Ar"]:             # when X == None
+            X = 0.
+        else:
+            X = Element(atom).X
+        elec_negativities.append(X)
+    onehot_elec_negativities = [numerical_onehot_encoder(0, 4, 9, X) for X in elec_negativities]
+    onehot_elec_negativities = np.array(onehot_elec_negativities)
+
+    # -- Atomic radius
+    atomic_radius = []
+    for atom in atoms:
+        if not Element(atom).atomic_radius:         # when atomic_radius == None
+            atomic_radius.append(0.)
+        else:
+            atomic_radius.append(Element(atom).atomic_radius)
+    onehot_atomic_radius = [numerical_onehot_encoder(0, 2.6, 9, r) for r in atomic_radius]
+    onehot_atomic_radius = np.array(onehot_atomic_radius)
+
+    # -- Row
+    atomic_row = [Element(atom).row for atom in atoms]
+    onehot_atomic_row = [numerical_onehot_encoder(1, 9, 9, r) for r in atomic_row]
+    onehot_atomic_row = np.array(onehot_atomic_row)
+
+    # -- Group
+    atomic_group = [Element(atom).group for atom in atoms]
+    onehot_atomic_group = [numerical_onehot_encoder(1, 18, 18, g) for g in atomic_group]
+    onehot_atomic_group = np.array(onehot_atomic_group)
+
+
+    # -- Concat all properties
+    properties = (onehot_elec_negativities, onehot_atomic_radius, onehot_atomic_row, onehot_atomic_group)
+    total_info = np.concatenate(properties, axis=1)
+
+    # shape = (103, num_total_onehot_length)
+    # ex.     (103, 47)
+    return total_info
+
+
 def get_cgcnn_atom_info():
     """
 
@@ -91,6 +154,26 @@ def get_cgcnn_atom_info():
     # -- end
     return atom_info
 
+
+def numerical_onehot_encoder(min_val, max_val, length, val):
+    """
+
+    :param min_val: minimum value of one hot tray
+    :param max_val: maximum value of one hot tray
+    :param length: size of one hot tray
+    :param val: input value
+    :return: one hot encoded numpy array
+    """
+    tray = np.zeros(shape=(length))
+    step = (float(max_val) - float(min_val)) / float(length)
+    criteria = np.linspace(min_val, max_val, length)
+
+    for i, c in enumerate(criteria):
+        if val <= c:
+            tray[i] = 1
+            break
+
+    return tray
 
 
 if __name__ == "__main__":

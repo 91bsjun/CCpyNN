@@ -33,7 +33,7 @@ def atomic_info():
         else:
             X = Element(atom).X
         elec_negativities.append(X)
-    onehot_elec_negativities = [numerical_onehot_encoder(0, 4, 10, X) for X in elec_negativities]
+    onehot_elec_negativities = [numerical_onehot_encoder(0, 4, 9, X) for X in elec_negativities]
     onehot_elec_negativities = np.array(onehot_elec_negativities)
 
     # -- Atomic radius
@@ -43,7 +43,7 @@ def atomic_info():
             atomic_radius.append(0.)
         else:
             atomic_radius.append(Element(atom).atomic_radius)
-    onehot_atomic_radius = [numerical_onehot_encoder(0, 2.6, 10, r) for r in atomic_radius]
+    onehot_atomic_radius = [numerical_onehot_encoder(0, 2.6, 9, r) for r in atomic_radius]
     onehot_atomic_radius = np.array(onehot_atomic_radius)
 
     # -- Row

@@ -45,30 +45,34 @@ def get_data(normalize_y, sample_size):
 
 class Model:
     def __init__(self, name, output_dim, activation_fn=tf.nn.relu,
-                 loss_fn=tf.losses.mean_squared_error, optimizer=tf.train.AdamOptimizer,
+                 loss_fn=tf.losses.mean_squared_error, optimize_fn=tf.train.AdamOptimizer,
                  learning_rate=0.001, keep_prob=0.8):
         # self.sess = sess
         self.name = name
         self.output_dim = output_dim
-        self.cell_a, self.cell_b, self.cell_c = 10, 10, 10
+        self.loss_fn = loss_fn
+        self.optimize_fn = optimize_fn
+        self.learning_rate = learning_rate
         self.keep_prob = keep_prob
         self.mode = tf.placeholder(tf.bool, name='mode')
         with tf.variable_scope(self.name):
-            self.X = tf.placeholder(tf.float32, [None, self.cell_a, self.cell_b, self.cell_c, 92])
-            self.rsX = tf.reshape(self.X, [-1, self.cell_a * self.cell_b * self.cell_c, 92])
             self.Y = tf.placeholder(tf.float32, [None, 1], name='Y')  # (?, 1)
+            self.initializer(10, 10, 10)
 
-            input_layer = self.rsX
-            stem_layer = self.stem(input_layer)
-            deception_layer = self.deception(stem_layer)
-            logit_layer = self.kick(deception_layer)
 
-            self.loss = loss_fn(self.Y, logit_layer)
-            self.loss = tf.reduce_mean(self.loss, name='loss')
 
-            update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope=name)
-            with tf.control_dependencies(update_ops):
-                self.optimizer = optimizer(learning_rate=learning_rate).minimize(self.loss)
+    def initializer(self, cell_a, cell_b, cell_c):
+        self.X = tf.placeholder(tf.float32, [None, cell_a, cell_b, cell_c, 92])
+        self.rsX = tf.reshape(self.X, [-1, cell_a * cell_b * cell_c, 92])
+        input_layer = self.rsX
+        stem_layer = self.stem(input_layer)
+        deception_layer = self.deception(stem_layer)
+        logit_layer = self.kick(deception_layer)
+
+        self.loss = self.loss_fn(self.Y, logit_layer)
+        self.loss = tf.reduce_mean(self.loss, name='loss')
+
+        self.optimizer = self.optimize_fn(learning_rate=self.learning_rate).minimize(self.loss)
 
     def stem(self, input_layer):
         fcX = tf.layers.dense(input_layer, units=128)
@@ -121,7 +125,7 @@ class Solver:
         self.model = model
         self.sess = sess
 
-    def train(self, X, Y, cell_a, cell_b, cell_c):
+    def train(self, X, Y):
         feed = {
             self.model.X: X,
             self.model.Y: Y,
@@ -129,7 +133,6 @@ class Solver:
         }
         optimizer = self.model.optimizer
         loss = self.model.loss
-        model.cell_a, model.cell_b, model.cell_c = cell_a, cell_b, cell_c
 
         return self.sess.run([optimizer, loss], feed_dict=feed)
 
@@ -147,6 +150,8 @@ if __name__ == "__main__":
 
     x_train, y_train, x_test, y_test = get_data(normalize_y=False, sample_size=sample_size)
     print("Learning Start")
+    init = tf.global_variables_initializer()
+    sess.run(init)
     for epoch in range(epoch_size):
         avg_cost = 0
         total_len = 0
@@ -154,4 +159,6 @@ if __name__ == "__main__":
         mini_x = np.array(x_train[(4, 4, 8, 92)], dtype='float32')
         mini_y = np.array(y_train[(4, 4, 8, 92)], dtype='float32')
         cell_a, cell_b, cell_c = 4, 4, 8
-        _, loss = solver.train(mini_x, mini_y, cell_a, cell_b, cell_c)
+        model.initializer(cell_a, cell_b, cell_c)
+        _, loss = solver.train(mini_x, mini_y)
+        print(loss)

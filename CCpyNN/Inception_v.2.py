@@ -76,83 +76,84 @@ def get_batch_data(X, Y, batch_size):
 
 def inception1(input_layer):
     # Layer A : 1x1x1
-    layer_A = tf.layers.conv3d(inputs=input_layer, filters=32,
-                               kernel_size=[1, 1, 1],
+    layer_A = tf.layers.conv2d(inputs=input_layer, filters=32,
+                               kernel_size=[1, 1],
                                padding="same",
-                               strides=[1, 1, 1],
-                               activation=tf.nn.relu)
+                               strides=[1, 1])
 
     # Layer B : 1x1x1 -> 2x2x4
-    layer_B = tf.layers.conv3d(inputs=input_layer, filters=16,
-                               kernel_size=[1, 1, 1],
+    layer_B = tf.layers.conv2d(inputs=input_layer, filters=16,
+                               kernel_size=[1, 1],
                                padding="same",
-                               strides=[1, 1, 1],
-                               activation=tf.nn.relu)
-    layer_B = tf.layers.conv3d(inputs=layer_B, filters=32,
-                               kernel_size=[2, 2, 4],
+                               strides=[1, 1])
+    layer_B = tf.layers.conv2d(inputs=layer_B, filters=32,
+                               kernel_size=[3, 3],
                                padding="same",
-                               strides=[1, 1, 1],
-                               activation=tf.nn.relu)
+                               strides=[1, 1])
 
     # Layer C : 1x1x1 -> 4x4x8
-    layer_C = tf.layers.conv3d(inputs=input_layer, filters=16,
-                               kernel_size=[1, 1, 1],
+    layer_C = tf.layers.conv2d(inputs=input_layer, filters=16,
+                               kernel_size=[1, 1],
                                padding="same",
-                               strides=[1, 1, 1],
-                               activation=tf.nn.relu)
-    layer_C = tf.layers.conv3d(inputs=layer_C, filters=32,
-                               kernel_size=[4, 4, 8],
+                               strides=[1, 1])
+    layer_C = tf.layers.conv2d(inputs=layer_C, filters=32,
+                               kernel_size=[3, 9],
                                padding="same",
-                               strides=[1, 1, 1],
-                               activation=tf.nn.relu)
+                               strides=[1, 1])
 
     # Layer D : Pooling -> 1x1x1
-    layer_D = tf.layers.max_pooling3d(inputs=input_layer,
-                                      pool_size=[1, 3, 1],
-                                      strides=[1, 1, 1],
+    layer_D = tf.layers.max_pooling2d(inputs=input_layer,
+                                      pool_size=[3, 9],
+                                      strides=[1, 1],
                                       padding='same')
-    layer_D = tf.layers.conv3d(inputs=layer_D, filters=32,
-                               kernel_size=[1, 1, 1],
+    layer_D = tf.layers.conv2d(inputs=layer_D, filters=32,
+                               kernel_size=[1, 1],
                                padding="same",
-                               strides=[1, 1, 1],
-                               activation=tf.nn.relu)
+                               strides=[1, 1])
 
     # Concat Layer
-    concat_layer = tf.concat([layer_A, layer_B, layer_C, layer_D], axis=4)
+    concat_layer = tf.concat([layer_A, layer_B, layer_C, layer_D], axis=3)
+    pooling_layer = tf.layers.max_pooling2d(inputs=concat_layer, pool_size=[2, 2], strides=1)
+    dropout_layer = tf.nn.dropout(pooling_layer, keep_prob=keep_prob)
 
-    return concat_layer
+
+    return dropout_layer
 
 
 def deception(input_layer):
     layer_1 = tf.layers.conv2d(inputs=input_layer, filters=32,
-                               kernel_size=[2, 2],
-                               padding="valid",
-                               strides=[2, 2])
-
-    layer_2 = tf.layers.conv2d(inputs=layer_1, filters=64,
                                kernel_size=[3, 3],
+                               padding="valid",
+                               strides=[3, 3])
+
+    layer_2 = tf.layers.conv2d(inputs=layer_1, filters=32,
+                               kernel_size=[2, 2],
                                padding="same",
                                strides=[2, 2])
 
-    layer_3 = tf.layers.conv2d(inputs=layer_2, filters=128,
+    layer_3 = tf.layers.conv2d(inputs=layer_2, filters=32,
                                kernel_size=[2, 2],
                                padding="valid",
                                strides=[2, 2])
 
-    layer_4 = tf.layers.conv2d(inputs=layer_3, filters=128,
+    layer_4 = tf.layers.conv2d(inputs=layer_3, filters=32,
                                kernel_size=[2, 2],
-                               padding="valid",
-                               strides=[2, 2])
+                               padding="same",
+                               strides=[2, 1])
 
-    layer_5 = tf.layers.conv2d(inputs=layer_4, filters=128,
+    layer_5 = tf.layers.conv2d(inputs=layer_4, filters=32,
                                kernel_size=[2, 2],
-                               padding="valid",
-                               strides=[2, 2])
+                               padding="same",
+                               strides=[2, 1])
+
+
 
     # post_conv = tf.reduce_mean(layer_5, axis=1)
     # s = post_conv.shape
 
     pooling_layer = tf.layers.max_pooling2d(inputs=layer_5, pool_size=[2, 2], strides=1)
+    pooling_layer = tf.reduce_sum(pooling_layer, axis=1)
+
 
     return pooling_layer
 
@@ -166,7 +167,7 @@ def stem(input_layer):
     expX = tf.expand_dims(bnX, axis=4)
     '''
     bnX = tf.layers.batch_normalization(input_layer)
-    fcX = tf.layers.dense(bnX, units=64)
+    fcX = tf.layers.dense(bnX, units=32)
     expX = tf.expand_dims(fcX, axis=3)
     # layer_1 = tf.layers.conv2d(inputs=expX, filters=32,
     #                            kernel_size=[1, 1],
@@ -221,34 +222,46 @@ def plot_result(loss, prd, cal):
     return plt
 
 
+
 if __name__ == "__main__":
     # parameters
-    sample_size = 4000
-    epoch_size = 75
-    batch_size = 150
+    sample_size = 1000
+    epoch_size = 100
+    batch_size = 200
     train_loss = []
 
-    X = tf.placeholder(tf.float32, [None, None, None, None, 92])
-    rsX = tf.reshape(X, [-1, 4 * 4 * 8, 92])
+    X = tf.placeholder(tf.float32, [None, None, None, None, 45])
+    # rsX = tf.reshape(X, [-1, 4 * 4 * 8, 92])
+    dim = tf.reduce_prod(tf.shape(X)[1:4])
+    rsX = tf.reshape(X, [-1, dim, 45])
+
     Y = tf.placeholder(tf.float32, [None, 1])  # (?, 1)
     keep_prob = tf.placeholder(tf.float32)
 
     # ------- Stem -------- #
     stem_layer = stem(rsX)
 
+    # ----- Inception ----- #
+    inception_layer = inception1(stem_layer)
+
     # ----- Deception ----- #
-    deception_layer_1 = deception(stem_layer)
+    deception_layer_1 = deception(inception_layer)
 
     #flat_layer = tf.reshape(deception_layer_1, [-1, 2 * 2 * 256])
     flat_layer = tf.layers.flatten(deception_layer_1)
 
     dense_layer = tf.layers.dense(inputs=flat_layer, units=1024)
+    # dense_layer = tf.layers.dense(inputs=dense_layer, units=512)
+    # dense_layer = tf.layers.dense(inputs=dense_layer, units=256)
+    # dense_layer = tf.layers.dense(inputs=dense_layer, units=128)
+    # dense_layer = tf.layers.dense(inputs=dense_layer, units=64)
 
     dropout_layer = tf.nn.dropout(dense_layer, keep_prob=keep_prob)
 
     logit_layer = tf.layers.dense(dropout_layer, units=1)
 
     cost = tf.losses.mean_squared_error(Y, logit_layer)
+    cost = tf.reduce_mean(cost)
     optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(cost)
 
 
@@ -263,28 +276,45 @@ if __name__ == "__main__":
         x_train, y_train, x_test, y_test = get_data(normalize_y=False, sample_size=sample_size)
         print("Learning Start")
         for epoch in range(epoch_size):
-            avg_cost = 0
+            total_cost = 0
             total_len = 0
-            # for key in x_train.keys():
-            mini_x = np.array(x_train[(4, 4, 8, 92)], dtype='float32')
-            mini_y = np.array(y_train[(4, 4, 8, 92)], dtype='float32')
+            for key in x_train.keys():
+                mini_x = np.array(x_train[key], dtype='float32')
+                mini_y = np.array(y_train[key], dtype='float32')
 
-            c, _ = sess.run([cost, optimizer], feed_dict={X: mini_x, Y: mini_y, keep_prob: 0.8})
-
-            train_loss.append(c)
-            print('Epoch:', '%04d' % (epoch + 1), 'cost =', '{:.9f}'.format(c))
+                mini_batch_x, mini_batch_y = get_batch_data(mini_x, mini_y, batch_size=batch_size)
+                for i in range(len(mini_batch_x)):
+                    c, _ = sess.run([cost, optimizer], feed_dict={X: mini_batch_x[i], Y: mini_batch_y[i], keep_prob: 0.8})
+                    total_cost += c
+                    total_len += len(mini_batch_x)
+            avg_cost = total_cost / total_len
+            train_loss.append(avg_cost)
+            print('Epoch:', '%04d' % (epoch + 1), 'cost =', '{:.9f}'.format(avg_cost))
             # if early_stopping.validate(avg_cost):
             #     break
 
         # -- Eval
-        mini_test_x = np.array(x_test[(4, 4, 8, 92)], dtype='float32')
-        mini_test_y = np.array(y_test[(4, 4, 8, 92)], dtype='float32')
-        c, hy, _ = sess.run([cost, logit_layer, optimizer], feed_dict={X: mini_test_x, Y: mini_test_y, keep_prob: 1})
-        print("Evaluated MSE : %.9f" % c)
-        prd = np.array(hy).squeeze()
-        cal = np.array(mini_test_y).squeeze()
-        # print(prd)
-        # print(cal)
+        total_cost = 0
+        total_len = 0
+        total_calc = []
+        total_prd = []
+        for key in x_test.keys():
+            mini_x = np.array(x_test[key], dtype='float32')
+            mini_y = np.array(y_test[key], dtype='float32')
 
-        plt = plot_result(train_loss, prd, cal)
+            c, hy, _ = sess.run([cost, logit_layer, optimizer], feed_dict={X: mini_x, Y: mini_y, keep_prob: 0.8})
+            total_cost += c
+            total_len += 1
+            mini_y = np.array(mini_y)
+            hy = np.array(hy)
+            for i in range(len(mini_y)):
+                total_calc.append(mini_y[i][0])
+                total_prd.append(hy[i][0])
+        avg_cost = total_cost / total_len
+        print("Evaluated MSE : %.9f" % avg_cost)
+
+        total_calc = np.array(total_calc)
+        total_prd = np.array(total_prd)
+
+        plt = plot_result(train_loss, total_prd, total_calc)
         plt.show()
