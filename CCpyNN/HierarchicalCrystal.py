@@ -57,8 +57,10 @@ class StructureToMatrixEncoder():
         m_shape = structure_matrix.shape
         for i in range(3):
             structure_matrix = np.delete(structure_matrix, [m_shape[i] - 1], axis=i)
-        print(structure_matrix)
-        print(structure_matrix.shape)
+        # print(structure_matrix)
+        # print(structure_matrix.shape)
+
+        return structure_matrix
 
     def get_structure_matrix(self):
         atom_info_len = len(self.total_atom_info[0])

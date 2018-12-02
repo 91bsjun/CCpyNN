@@ -39,7 +39,7 @@ def get_data(normalize_y, sample_size):
         batch_group_y = {}
         for i, cif in enumerate(cifs):
             encoder = StructureToMatrixEncoder(cif)
-            m = encoder.get_structure_matrix()
+            m = encoder.show_matrix_structure()
             if m.shape not in batch_group_x.keys():
                 batch_group_x[m.shape] = [m]
                 batch_group_y[m.shape] = [[formation_energy[i]]]
@@ -121,41 +121,37 @@ def inception1(input_layer):
 
 
 def deception(input_layer):
-    layer_1 = tf.layers.conv2d(inputs=input_layer, filters=32,
-                               kernel_size=[2, 9],
+    layer_1 = tf.layers.conv3d(inputs=input_layer, filters=16,
+                               kernel_size=[2, 2, 2],
                                padding="same",
-                               strides=[2, 9])
+                               strides=[2, 2, 2])
+    layer_2 = tf.layers.conv3d(inputs=layer_1, filters=32,
+                               kernel_size=[2, 2, 2],
+                               padding="valid",
+                               strides=[2, 2, 2])
+    layer_3 = tf.layers.conv3d(inputs=layer_2, filters=64,
+                               kernel_size=[2, 2, 2],
+                               padding="valid",
+                               strides=[2, 2, 2])
+    layer_4 = tf.layers.conv3d(inputs=layer_3, filters=128,
+                               kernel_size=[2, 2, 2],
+                               padding="valid",
+                               strides=[2, 2, 2])
+    layer_5 = tf.layers.conv3d(inputs=layer_4, filters=256,
+                               kernel_size=[2, 2, 2],
+                               padding="valid",
+                               strides=[2, 2, 2])
 
-    layer_2 = tf.layers.conv2d(inputs=layer_1, filters=32,
-                               kernel_size=[2, 2],
-                               padding="same",
-                               strides=[2, 1])
+    dim = tf.reduce_prod(tf.shape(layer_5)[1:4])
+    post_conv = tf.reshape(layer_5, [-1, dim, 256])
+    post_conv = tf.reduce_sum(post_conv, axis=1)
+    print(post_conv.shape)
+    quit()
 
-    layer_3 = tf.layers.conv2d(inputs=layer_2, filters=32,
-                               kernel_size=[2, 2],
-                               padding="same",
-                               strides=[2, 1])
+    # pooling_layer = tf.layers.max_pooling2d(inputs=post_conv, pool_size=[2, 2], strides=2)
+    # pooling_layer = tf.layers.max_pooling2d(inputs=layer_5, pool_size=[2, 2], strides=1)
 
-    layer_4 = tf.layers.conv2d(inputs=layer_3, filters=32,
-                               kernel_size=[2, 2],
-                               padding="same",
-                               strides=[2, 1])
-
-    layer_5 = tf.layers.conv2d(inputs=layer_4, filters=32,
-                               kernel_size=[2, 2],
-                               padding="same",
-                               strides=[2, 1])
-
-
-
-    # post_conv = tf.reduce_mean(layer_5, axis=1)
-    # s = post_conv.shape
-
-    pooling_layer = tf.layers.max_pooling2d(inputs=layer_5, pool_size=[2, 2], strides=1)
-    pooling_layer = tf.reduce_sum(pooling_layer, axis=1)
-
-
-    return pooling_layer
+    return post_conv
 
 
 
@@ -168,13 +164,13 @@ def stem(input_layer):
     '''
     # bnX = tf.layers.batch_normalization(input_layer)
     # fcX = tf.layers.dense(bnX, units=32)
-    expX = tf.expand_dims(input_layer, axis=3)
-    layer_1 = tf.layers.conv2d(inputs=expX, filters=32,
-                               kernel_size=[7, 7],
-                               padding="same",
-                               strides=[1, 1])
+    expX = tf.expand_dims(input_layer, axis=4)
+    # layer_1 = tf.layers.conv2d(inputs=expX, filters=32,
+    #                            kernel_size=[7, 7],
+    #                            padding="same",
+    #                            strides=[1, 1])
 
-    return layer_1
+    return expX
 
 
 class EarlyStopping():
@@ -225,21 +221,21 @@ def plot_result(loss, prd, cal):
 
 if __name__ == "__main__":
     # parameters
-    sample_size = 9000
-    epoch_size = 100
+    sample_size = 500
+    epoch_size = 30
     batch_size = 100
     train_loss = []
 
-    X = tf.placeholder(tf.float32, [None, None, None, None, 45])
+    X = tf.placeholder(tf.float32, [None, None, None, None])
     # rsX = tf.reshape(X, [-1, 4 * 4 * 8, 92])
-    dim = tf.reduce_prod(tf.shape(X)[1:4])
-    rsX = tf.reshape(X, [-1, dim, 45])
+    # dim = tf.reduce_prod(tf.shape(X)[1:4])
+    # rsX = tf.reshape(X, [-1, dim, 45])
 
     Y = tf.placeholder(tf.float32, [None, 1])  # (?, 1)
     keep_prob = tf.placeholder(tf.float32)
 
     # ------- Stem -------- #
-    stem_layer = stem(rsX)
+    stem_layer = stem(X)
 
     # ----- Inception ----- #
     # inception_layer = inception1(stem_layer)
