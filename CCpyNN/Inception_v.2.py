@@ -170,7 +170,7 @@ def stem(input_layer):
     # fcX = tf.layers.dense(bnX, units=32)
     expX = tf.expand_dims(input_layer, axis=3)
     layer_1 = tf.layers.conv2d(inputs=expX, filters=32,
-                               kernel_size=[7, 7],
+                               kernel_size=[9, 9],
                                padding="same",
                                strides=[1, 1])
 
@@ -242,16 +242,18 @@ if __name__ == "__main__":
     stem_layer = stem(rsX)
 
     # ----- Inception ----- #
-    # inception_layer = inception1(stem_layer)
+    inception_layer = inception1(stem_layer)
 
     # ----- Deception ----- #
-    deception_layer_1 = deception(stem_layer)
+    deception_layer_1 = deception(inception_layer)
 
     #flat_layer = tf.reshape(deception_layer_1, [-1, 2 * 2 * 256])
     flat_layer = tf.layers.flatten(deception_layer_1)
 
     dense_layer = tf.layers.dense(inputs=flat_layer, units=1024)
     dense_layer = tf.layers.dense(inputs=dense_layer, units=512)
+    dense_layer = tf.layers.dense(inputs=dense_layer, units=256)
+    dense_layer = tf.layers.dense(inputs=dense_layer, units=128)
 
     dropout_layer = tf.nn.dropout(dense_layer, keep_prob=keep_prob)
 
@@ -265,7 +267,7 @@ if __name__ == "__main__":
 
     with tf.Session() as sess:
         # -- Early stop code
-        # early_stopping = EarlyStopping(patience=5, verbose=1)
+        early_stopping = EarlyStopping(patience=5, verbose=1)
         # -- Initialize
         init = tf.global_variables_initializer()
         sess.run(init)
@@ -287,8 +289,8 @@ if __name__ == "__main__":
             avg_cost = total_cost / total_len
             train_loss.append(avg_cost)
             print('Epoch:', '%04d' % (epoch + 1), 'cost =', '{:.9f}'.format(avg_cost))
-            # if early_stopping.validate(avg_cost):
-            #     break
+            if early_stopping.validate(avg_cost):
+                break
 
         # -- Eval
         total_cost = 0
@@ -314,4 +316,5 @@ if __name__ == "__main__":
         total_prd = np.array(total_prd)
 
         plt = plot_result(train_loss, total_prd, total_calc)
+        plt.savefig("inception_v.2.png")
         plt.show()

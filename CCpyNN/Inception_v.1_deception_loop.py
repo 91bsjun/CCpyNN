@@ -20,11 +20,11 @@ def get_data(normalize_y, sample_size):
     training = 0.9
     test = 0.1
 
-    df = pd.read_csv("./Data/metal-alloy-db.v2/00Total_DB.csv")
+    df = pd.read_csv("./Data/metal-alloy-db.v1/00Total_DB.csv")
     # df = df.sample(n=len(df))
     df = df.sample(n=sample_size)
 
-    cifs = "./Data/metal-alloy-db.v2/" + df['DBname'] + ".cif"
+    cifs = "./Data/metal-alloy-db.v1/" + df['DBname'] + ".cif"
     structures = [IStructure.from_file(cif) for cif in cifs]
     encoded_structures = [structure_encoder(structure, radius, max_neighbor_num) for structure in structures]
     x_data = np.array(encoded_structures)
@@ -133,12 +133,12 @@ def deception(input_layer):
                                        strides=[1, 1, 4])
         fea_len = input_layer.shape[3]
 
+    post_conv = tf.reduce_mean(input_layer, axis=1)
+    # post_conv = tf.reduce_sum(input_layer, axis=1)
+    final_shape = post_conv.shape
+    post_conv = tf.reshape(post_conv, [-1, final_shape[1], final_shape[3]])
 
-    final_shape = input_layer.shape
-
-    post_conv = tf.reshape(input_layer, [-1, final_shape[1], final_shape[2], final_shape[4]])
-
-    pooling_layer = tf.layers.max_pooling2d(inputs=post_conv, pool_size=[2, 2], strides=2)
+    pooling_layer = tf.layers.max_pooling1d(inputs=post_conv, pool_size=2, strides=2)
 
     return pooling_layer
 
@@ -198,8 +198,8 @@ def plot_result(loss, prd, cal):
     return plt
 
 if __name__ == "__main__":
-    X = tf.placeholder(tf.float32, [None, 8, 10, 135])  # (?, N, 10, 225)
-    # X = tf.placeholder(tf.float32, [None, None, 10, 225])  # (?, N, 10, 225)
+    X = tf.placeholder(tf.float32, [None, None, 10, 100])  # (?, N, 10, 225)
+    # X = tf.placeholder(tf.float32, [None, None, 10, 135])  # (?, N, 10, 225)
     Y = tf.placeholder(tf.float32, [None, 1])  # (?, 1)
     keep_prob = tf.placeholder(tf.float32)
     is_train = tf.placeholder(tf.bool)
@@ -227,8 +227,8 @@ if __name__ == "__main__":
     optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(cost)
 
     # parameters
-    sample_size = 9000
-    epoch_size = 50
+    sample_size = 4096
+    epoch_size = 100
     batch_size = 200
     train_loss = []
 
@@ -259,5 +259,11 @@ if __name__ == "__main__":
         prd = np.array(hy).squeeze()
         cal = np.array(y_test).squeeze()
 
+        # -- Save result
+        data = {'Calc': cal, 'Prd': prd}
+        df = pd.DataFrame(data)
+        df.to_csv("inception_v1.csv")
+
         plt = plot_result(train_loss, prd, cal)
+        plt.savefig("inception_v.1.png")
         plt.show()

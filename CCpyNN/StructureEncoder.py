@@ -118,27 +118,27 @@ def structure_encoder(structure, radius, max_neighbor_num):
 
     # -- custom distance info
     # One hot encoding of distance
-    #onehot_neighbor_distance = []
-    #for each_site in neighbor_distance:
-    #    tmp = [numerical_onehot_encoder(1, radius, 10, d) for d in each_site]
-    #    onehot_neighbor_distance.append(tmp)
-    #onehot_neighbor_distance = np.array(onehot_neighbor_distance)  # shape = (sites, neighbors, length)
+    onehot_neighbor_distance = []
+    for each_site in neighbor_distance:
+       tmp = [numerical_onehot_encoder(1, radius, 10, d) for d in each_site]
+       onehot_neighbor_distance.append(tmp)
+    onehot_neighbor_distance = np.array(onehot_neighbor_distance)  # shape = (sites, neighbors, length)
 
-    def gaussian_distance(distances):
-        dmin = 0
-        dmax = 8
-        step = 0.2
-        var = None
-        assert dmin < dmax
-        assert dmax - dmin > step
-        filter = np.arange(dmin, dmax + step, step)
-        if var is None:
-            var = step
-        var = var
-
-        return np.exp(-(distances[..., np.newaxis] - filter) ** 2 /
-                      var ** 2)
-    onehot_neighbor_distance = gaussian_distance(neighbor_distance)
+    # def gaussian_distance(distances):
+    #     dmin = 0
+    #     dmax = 8
+    #     step = 0.2
+    #     var = None
+    #     assert dmin < dmax
+    #     assert dmax - dmin > step
+    #     filter = np.arange(dmin, dmax + step, step)
+    #     if var is None:
+    #         var = step
+    #     var = var
+    #
+    #     return np.exp(-(distances[..., np.newaxis] - filter) ** 2 /
+    #                   var ** 2)
+    # onehot_neighbor_distance = gaussian_distance(neighbor_distance)
 
     # -- custom atom_info
     atom_info = atomic_info()  # atomic information of all atoms as order of atomic number
@@ -181,3 +181,4 @@ if __name__ == "__main__":
     structures = [IStructure.from_file(cif) for cif in cifs]
     structure = IStructure.from_file("./Data/from_cgcnn/9009743.cif")
     encoded_structure = structure_encoder(structure, radius, max_neighbor_num)
+    print(encoded_structure.shape)
