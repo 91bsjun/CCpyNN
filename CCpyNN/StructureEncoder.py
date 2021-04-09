@@ -1,7 +1,7 @@
 import os
 import json
 import numpy as np
-np.set_printoptions(threshold=np.nan)
+#np.set_printoptions(threshold=np.nan)
 import tensorflow as tf
 from pymatgen.core.periodic_table import Element
 from pymatgen.core.structure import IStructure
